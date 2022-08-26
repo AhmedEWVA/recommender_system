@@ -1,0 +1,15 @@
+numpy
+pandas
+requests
+tqdm
+langdetect
+nltk
+geopandas
+scipy
+scikit-learn
+matplotlib
+googletrans==3.1.0a0
+gensim
+seaborn
+folium
+geopy
