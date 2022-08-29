@@ -7,6 +7,7 @@ from tqdm.auto import tqdm
 import argparse
 
 def process_tags(tags):
+    # process that tags to a list of industry tags and a list of keywords tags
     industries = []
     keywords = []
     for i in range(len(tags)):
@@ -17,6 +18,7 @@ def process_tags(tags):
     return industries, keywords
 
 def create_item_dict(ele):
+    # create an item dictionary
     item = {}
     item["id"] = ele["id"]
     item["name"] = ele["name"]
@@ -51,16 +53,17 @@ def converting_to_dataframe(json_path, i):
 
 
 def factoring_address(address_dict):
-        elements = ['street','zip', 'city', 'state', 'country', 'other']
-        address = ''
-        try: 
-            for i in elements:
-                    if not (address_dict[i] == None):
-                            address += address_dict[i]+ ", "
-            
-            return address[:-2]
-        except:
-            return None
+    # formating the address into; 'street','zip', 'city', 'state', 'country', 'other'
+    elements = ['street','zip', 'city', 'state', 'country', 'other']
+    address = ''
+    try: 
+        for i in elements:
+                if not (address_dict[i] == None):
+                        address += address_dict[i]+ ", "
+        
+        return address[:-2]
+    except:
+        return None
 
 """def converting_to_dataframe(json_path):
     with open(json_path) as json_file:
@@ -73,6 +76,7 @@ def factoring_address(address_dict):
     return df"""
 
 def combining_to_one_csv(n, directory):
+    # concatenating several csv files with similar columns
     csv_path = "csvs/results_0.csv"
     df_full = converting_to_dataframe(csv_path)
     for i in tqdm(list(range(1,n))):
@@ -93,13 +97,14 @@ if __name__ == "__main__":
                         help='api url')
     parser.add_argument('--beginning', type=int, default=0, metavar='N',
                         help='The beginning interger')
-    parser.add_argument('--num_steps', type=int, default=2800000, metavar='N',
+    parser.add_argument('--num_steps', type=int, default=28000, metavar='N',
                         help='The end integer')
 
     parser.add_argument('--column', type=str, default="ind_embed", metavar='N',
                         help='Specify the column on which the clustering is applied')
     args = parser.parse_args()
 
+    # call the api to get company data and format it
     for i in tqdm(list(range(args.beginning,args.num_steps+args.beginning))):
             t1 = time.time()
             results = link_to_json(args.url)
@@ -108,6 +113,7 @@ if __name__ == "__main__":
             """with open(f'jsons/results_{i}.json', 'w') as outfile:
                     json.dump(results, outfile)"""
             t2 = time.time()
+    # create a csv file from this
     combining_to_one_csv(args.num_steps,'companies_full.csv')
 
     

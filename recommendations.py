@@ -11,10 +11,7 @@ import os, os.path
 
 import ast
 import re
-from sklearn.metrics.pairwise import cosine_similarity
-from gensim.models import Word2Vec
-import gensim
-import gensim.downloader
+
 
 import matplotlib.pyplot as plt
 from gensim.models.phrases import Phrases, Phraser
@@ -23,21 +20,11 @@ import seaborn as sns
 
 from collections import Counter
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.feature_extraction.text import TfidfTransformer
-from sklearn.metrics.pairwise import linear_kernel
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
+
 from sklearn.neighbors import NearestNeighbors
-from sklearn.neighbors import kneighbors_graph
-from sklearn.cluster import AgglomerativeClustering
 
 import os
 import urllib.request
-from scipy import spatial
-from sklearn.manifold import TSNE
 from numpy import dot
 from numpy.linalg import norm
 import argparse
@@ -48,6 +35,7 @@ def compute_distance(company_id, candidates_id):
     return
 
 def get_rank_wrt_distance(candidate_neigh, distances):
+    # rank companies by their distance, the closer the company the higher its rank
     neighbours1 = []
     neighbours2 = []
     neighbours3 = []
@@ -61,6 +49,7 @@ def get_rank_wrt_distance(candidate_neigh, distances):
     return neighbours1, neighbours2, neighbours3
 
 def rank_by_location(location, candidates_ids):
+    # rank companies by their location, the closer the company the higher its rank
     distances = compute_distance(location, candidates_ids)
     n1,n2,n3 = get_rank_wrt_distance(candidates_ids, distances)
     return n1+n2+n3
@@ -69,12 +58,14 @@ def rank_by_location(location, candidates_ids):
 
 
 def get_closest( embedding, embeddings, num_neighbours):
+    # based on embedding vectors compute the nearest companies
     neigh = NearestNeighbors(n_neighbors=2, radius=0.7)
     neigh.fit(embeddings)
     neighbours = neigh.kneighbors([embedding], num_neighbours, return_distance=False)
     return neighbours
 
 def recommendation1(id, embedding, size, ids, embeddings, sizes, num_neighbours):
+    # select companies with similar size then compute the most similar ones semantically
     #size, location, companies
     idx = np.where(ids==id)[0][0]
     #location = row["location"]
@@ -95,6 +86,7 @@ def recommendation1(id, embedding, size, ids, embeddings, sizes, num_neighbours)
         return neighbours
 
 def recommendation2(id, embedding, size, ids, embeddings, sizes, num_neighbours):
+    # First compute the most similar companies based on semantic information then rank the obtained companies based size (and further companies)
     idx = np.where(ids==id)[0][0]
     neighbours = get_closest( embedding, embeddings, num_neighbours)
     #print(sizes[neighbours])
@@ -103,10 +95,12 @@ def recommendation2(id, embedding, size, ids, embeddings, sizes, num_neighbours)
 
 
 def distance_with_size(size1, size2):
+    # compute a size-relative distance between two companies, the more similar the companies are the smaller the distance
     return np.abs(size1-size2) 
 
 
 def get_rank_wrt_size(candidate_neigh, sizes, size):
+    # rank recommanded companies by size
     distances = [distance_with_size(size,j) for j in sizes][0]
     neighbours1 = []
     neighbours2 = []
@@ -120,6 +114,7 @@ def get_rank_wrt_size(candidate_neigh, sizes, size):
             neighbours3.append(ele)
     return neighbours1+neighbours2+neighbours3
 
+# rank recommendations by location
 """def rank_by_location(location, candidates_ids):
     distances = compute_distance(location, candidates_ids)
     n1,n2,n3 = get_rank_wrt_distance(candidates_ids, distances)
@@ -161,16 +156,27 @@ if __name__ == "__main__":
 
 
     
-    ids = companies_df["id"].values
+    
+    # processing embeddings (from string to floats)
     embeddings = companies_df["embeddings"].values
-    embeddings = np.vstack(embeddings)
-    sizes = companies_df["size"].values
-    embeddings = companies_df["embeddings"].values
+    embeddings_list = []
+    for e in embeddings:
+        embeddings_list.append(ast.literal_eval(e))
+    embeddings = np.array(embeddings_list)
+
     sizes = companies_df["sizes"].values
+    ids = companies_df["id"].values
+
     #locations = companies_df["locations"].values
 
+    # compute recommendations for each company
     series_tmp = [recommendation2(ids[i], embeddings[i], sizes[i], ids[:], embeddings[:], sizes[:], 100) for i in tqdm(range(len(sizes)))]
+    # map from indeces to ids
     series_ids = to_ids(series_tmp, companies_df)
-    recommendations_df = df=pd.concat([df["id"],pd.Series(series_ids)],axis=1)
+
+    # mapping from one company's id to the ids of similar companies
+    recommendations_df = pd.concat([companies_df["id"],pd.Series(series_ids)],axis=1)
     recommendations_df.columns = ["id", "recommendations"]
+
+    #export the results into a csv
     recommendations_df.to_csv(f'recommendations.csv')

@@ -17,6 +17,7 @@ from tqdm.autonotebook import tqdm
 
 
 def distribution_employees(num_employees):
+    # classify the companies by their number of employee
     if (num_employees<50):
         return 1
     elif (num_employees>250):
@@ -25,6 +26,7 @@ def distribution_employees(num_employees):
         return 2
 
 def distribution_revenues(revenues):
+    # classify the companies by their revenues
     if (revenues<=1000000):
         return 1
     elif (revenues>1000000 and revenues<=10000000):
@@ -37,6 +39,7 @@ def distribution_revenues(revenues):
         return 5
 
 def range_to_value(range_):
+    # map ranges to numbers
     if range_=='1-10' or range_=='1-9':
         return '10'
     elif range_=='11-50' or range_=='10-49':
@@ -51,6 +54,7 @@ def range_to_value(range_):
         return range_
 
 def get_size(num_employees, revenue):
+    # based on previous classifications on revenues and number of employees, classify companies into big small or medium
     revenue = distribution_revenues(revenue)
     num_employees = distribution_employees(num_employees)
     if (revenue ==1 or num_employees==1):
@@ -76,15 +80,18 @@ if __name__ == "__main__":
         try:
             employees.append(float(range_to_value(i)))
         except:
+            # if nan assign 40
             employees.append(40)
     revenues = []
     for i in companies_df["annual_revenue_estimation"].values:
         try:
             revenues.append(float(range_to_value(i)))
         except:
+            # if nan assign 1000000
             revenues.append(1000000)
+    # classify all companies
     sizes = [get_size(employees[i],revenues[i]) for i in range(len(employees))]
-    companies_df["size"] = sizes
+    companies_df["sizes"] = sizes
 
-
+    #export results to a csv files
     companies_df.to_csv(f'companies_with_size.csv')

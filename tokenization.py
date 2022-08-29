@@ -43,6 +43,8 @@ from numpy import dot
 from numpy.linalg import norm
 
 def normalize(tokenized_text):
+    # takes tokens as input and removes non alphabetical characters
+    
     clean_token=[]
     for token in tokenized_text:
         token = token.lower()
@@ -63,10 +65,14 @@ def removing_stopwords(normalized_text, stop_words):
     return tokens
 
 def processing_text(description, stop_words):
+    # first tokenize
     tokenized_description = WordPunctTokenizer().tokenize(description)
+    # second normalize
     normalized_description = normalize(tokenized_description)
+    # remove stopwords
     removed_stop_words_description = removing_stopwords(normalized_description, stop_words)
 
+    # if there is an issue do it all over again
     if (len(removed_stop_words_description)==1):
         description = removed_stop_words_description[0]
         tokenized_description = WordPunctTokenizer().tokenize(description)
@@ -84,6 +90,7 @@ def lemmatizing(removed_stopwords):
     return lemmatize_text
 
 def processing_tags(list_of_tags, stop_words):
+    # process a list of tags by tokenizing, normalizing and removing stop words
     processed_tags = []
     for e in tqdm(list_of_tags):
         try:
@@ -94,15 +101,10 @@ def processing_tags(list_of_tags, stop_words):
         
     return processed_tags
 
-def tokenize_df(row, stop_words):
-    tokenized_tags = []
-    for e in list_of_tags:
-        processed_tags = processing_text(e,stop_words)
-        for ele in processed_tags:
-            tokenized_tags.append(ele)
-    return tokenized_tags
 
 def get_tags_corpus(series):
+    # this function takes as input a pandas series (a column from a dataframe)
+    # aggregate all tags in the series and return a dictionary where keys are tags and values are the numeber of occurances of each tag
     vocab_tags = series.values
     tags_corpus = []
     for industry_tags_row in tqdm(vocab_tags):
@@ -113,6 +115,7 @@ def get_tags_corpus(series):
     return Counter(tags_corpus)
 
 def tokenize_from_dict(dictionary, ele):
+    # use a dictionary where the mapping between tags and tokenized tags already exist 
     try:
         #print(ele)
         return dictionary[ele]
@@ -142,21 +145,26 @@ if __name__ == "__main__":
 
     stop_words = stopwords.words('english')
     tqdm.pandas()
-
+    #load the dataset where the translation is already done
     companies_df = pd.read_csv(args.df_name,low_memory=False, lineterminator='\n')
+    # select a subset of the data
+    tags_df = companies_df.loc[:args.ending,["id", "eng_industries", "eng_keywords"]]
 
-    tags_df = companies_df.loc[:args.ending,["id", "eng_industries", "eng_industries"]]
-
+    #get unique tags
     unique_ind_tags = get_tags_corpus(tags_df["eng_industries"])
     unique_kw_tags = get_tags_corpus(tags_df["eng_keywords"])
 
+    # tokenize the tags
     tokenized_ind_tags = processing_tags(list(unique_ind_tags.keys()), stop_words)
     tokenized_kw_tags = processing_tags(list(unique_kw_tags.keys()), stop_words)
 
+    # map tags to tokens
     ind_tags_dict = dict(zip(unique_ind_tags, tokenized_ind_tags))
     kw_tags_dict = dict(zip(unique_kw_tags, tokenized_kw_tags))
 
+    #apply the tokenization on all rows and get new columns
     companies_df["tokenized_indutries"] = tags_df["eng_industries"].progress_apply(lambda row : tokenize_list_from_dict(ind_tags_dict,row))
     companies_df["tokenized_keywords"] = tags_df["eng_keywords"].progress_apply(lambda row : tokenize_list_from_dict(kw_tags_dict, row))
 
+    #export the results to new csv file
     companies_df.to_csv(f'companies_tokenized.csv')

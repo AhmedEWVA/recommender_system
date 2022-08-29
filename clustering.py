@@ -49,6 +49,7 @@ def find_indices(list_to_check, item_to_find):
     return list(indices)
 
 def give_examples_of_clusters(num, clustering):
+    # from each cluster select num elements randomly
     examples = []
     labels = np.unique(clustering.labels_)
     for i in labels:
@@ -74,9 +75,14 @@ if __name__ == "__main__":
     companies_df = pd.read_csv(args.df_name,low_memory=False, lineterminator='\n')
     tqdm.pandas()
 
-    embedd = companies_df[args.column]
-    vectors = np.vstack(list(companies_df["embeddings"].values))
+    # processing embeddings (from string to floats)
+    embeddings = companies_df[args.column]
+    embeddings_list = []
+    for e in embeddings:
+        embeddings_list.append(ast.literal_eval(e))
+    vectors =  np.array(embeddings_list)
     
+    #apply the clustering methods
     if (args.method == "kmeans"):
         clustering = KMeans(n_clusters=args.num_clusters, random_state=0).fit(vectors)
     elif (args.method == "ward"):
@@ -93,5 +99,5 @@ if __name__ == "__main__":
     companies_df["clustering_labels"] = clustering.labels_
     #companies_df["kw_embed"] = companies_df["tokens_keywords"].progress_apply(lambda row :  get_row_embedding(row, get_description_embedding_avg, embed_glv_50, 50 ))  
 
-    
+    #exporting results to csv file
     companies_df.to_csv(f'companies_clustering.csv')

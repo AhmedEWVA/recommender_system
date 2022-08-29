@@ -39,6 +39,8 @@ import argparse
 
 
 def get_tags_corpus(series):
+    # Given a pandas series (a column from a dataframe)
+    # aggregate all tokens in the series and return a dictionary where keys are tags and values are the number of occurances of each tag
     vocab_tags = series.values
     tags_corpus = []
     for industry_tags_row in tqdm(vocab_tags):
@@ -49,6 +51,7 @@ def get_tags_corpus(series):
     return Counter(tags_corpus)
 
 def get_multiple_appearence_words(dict, num_appearances):
+    # use only the words that appear more than num_appearances times
     corpus = []
     for i, (key,value) in enumerate(dict.items()):
         if (value>num_appearances):
@@ -56,6 +59,7 @@ def get_multiple_appearence_words(dict, num_appearances):
     return corpus
 
 def get_number_of_occ(word, description):
+    # get the number of occurances of word in description
     description = ast.literal_eval(description)
     i=0
     for ele in description:
@@ -64,6 +68,7 @@ def get_number_of_occ(word, description):
     return i
 
 def get_bag_of_word_matrix(series, corpus):
+    # compute the bag of words matrix based on corpus and data of each row
     vocab_tags = series.values
     n = len(vocab_tags)
     m = len(corpus)
@@ -90,26 +95,27 @@ if __name__ == "__main__":
     companies_df = pd.read_csv(args.df_name,low_memory=False, lineterminator='\n')
     tqdm.pandas()
     
-
-    corpus_ind = get_multiple_appearence_words(get_tags_corpus(companies_df["tokens_industries"]),10)
+    #get corpus by ignoring tokens that appear rarely
+    corpus_ind = get_multiple_appearence_words(get_tags_corpus(companies_df["tokenized_indutries"]),10)
     #corpus_kw = get_multiple_appearence_words(get_tags_corpus(companies_df["tokens_keywords"]),10)
 
-    bow_mat_ind = get_bag_of_word_matrix(companies_df["tokens_industries"], corpus_ind)
+    bow_mat_ind = get_bag_of_word_matrix(companies_df["tokenized_keywords"], corpus_ind)
     #bow_mat_kw = get_bag_of_word_matrix(companies_df["tokens_keywords"], corpus_kw)
 
-
+    # apply tf-idf transformation
     tfidf_transformer=TfidfTransformer(smooth_idf=True,use_idf=True)
     tfidf_transformer.fit(bow_mat_ind)
     tf_idf_vector=tfidf_transformer.transform(bow_mat_ind)
 
+    # apply pca for dimensionality reduction in order to be able to meaningful compution on the results
     x_ind= tf_idf_vector.toarray()
     x_ind = StandardScaler().fit_transform(x_ind)
     pca_ind = PCA(n_components=5)
     pca_ind.fit(x_ind)
     vec_ind = pca_ind.transform(x_ind)
-
-    companies_df["ind_tf_idf"] = vec_ind#companies_df["tokens_industries"].progress_apply(lambda row :  get_row_embedding(row, get_description_embedding_avg, embed_glv_50, 50 ))  
+    vect_ind = list(vec_ind)
+    companies_df["ind_tf_idf"] = [list(i) for i in vect_ind]#companies_df["tokens_industries"].progress_apply(lambda row :  get_row_embedding(row, get_description_embedding_avg, embed_glv_50, 50 ))  
     #companies_df["kw_tf_idf"] = companies_df["tokens_keywords"].progress_apply(lambda row :  get_row_embedding(row, get_description_embedding_avg, embed_glv_50, 50 ))  
 
-    
+    # export result to a csv file
     companies_df.to_csv(f'companies_tf_idf.csv')
