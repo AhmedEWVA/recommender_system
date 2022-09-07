@@ -30,29 +30,45 @@ from numpy import dot
 from numpy.linalg import norm
 import argparse
 
-
 def get_description_embedding_avg(description, emmbed_dict, embed_dim):
     # compute an average over the embeddings of the words in a list
-    n = len(description)
     embedding = np.zeros(embed_dim)
-    for i, ele in enumerate(description):
-        try:
-            embedding += emmbed_dict[ele]
-        except:
-            pass
-    return embedding/n
+    if (description):
+        n = len(description)
+        for i, ele in enumerate(description):
+            try:
+                embedding += emmbed_dict[ele]
+            except:
+                pass
+        return embedding/n
+    return embedding
 
 def get_description_embedding_max(description, emmbed_dict, embed_dim):
     # compute a dimensional maximum over the embeddings of the words in a list
-    n = len(description)
+
     embedding = np.zeros(embed_dim)
-    for i, ele in enumerate(description):
-        try:
-            embedding = np.maximum(embedding, emmbed_dict[ele])
-        except:
-            pass
+    if (description):
+        n = len(description)
+        for i, ele in enumerate(description):
+            try:
+                embedding = np.maximum(embedding, emmbed_dict[ele])
+            except:
+                pass
+        return embedding
     return embedding
     
+
+
+def get_row_embedding(row, embed_fun, embed_dict, embed_dim ):
+    # given a row of the dataset compute the embeddings
+
+    if (type(row)==str):
+        list_tokens = ast.literal_eval(row)
+        return embed_fun(list_tokens, embed_dict, embed_dim) 
+    else:
+        return np.zeros(50)
+
+
 def cosine(a,b):
     # compute cosine similarity
     cos_sim = dot(a, b)/(norm(a)*norm(b))
@@ -76,13 +92,7 @@ def get_all_embedding(descriptions_, embed_fun, embed_dict, embed_dim ):
         vectors.append(embed_fun(ele,embed_dict,embed_dim))
     return vectors
 
-def get_row_embedding(row, embed_fun, embed_dict, embed_dim ):
-    # given a row of the dataset compute the embeddings
-    if (type(row)==str):
-        list_tokens = ast.literal_eval(row)
-        return embed_fun(list_tokens, embed_dict, embed_dim) 
-    else:
-        return None
+
 
 def find_indices(list_to_check, item_to_find):
     array = np.array(list_to_check)
@@ -97,20 +107,16 @@ def give_examples_of_clusters(num, clustering):
         examples.append(np.random.choice(find_indices(clustering.labels_,i), size=num))
     return examples
     
+
 def get_embeddings(df):
     # sum the embeddings from indutry tags and keywords tags
-    ind_embeddings = df["eng_industries"].progress_apply(lambda row :  get_row_embedding(row, get_description_embedding_max, embed_glv_50, 50 )).values
-    kw_embeddings = df["eng_keywords"].progress_apply(lambda row :  get_row_embedding(row, get_description_embedding_avg, embed_glv_50, 50 )).values
+    ind_embeddings = df["tokenized_indutries"].progress_apply(lambda row :  get_row_embedding(row, get_description_embedding_avg, embed_glv_50, 50 )).values
+    kw_embeddings = df["tokenized_keywords"].progress_apply(lambda row :  get_row_embedding(row, get_description_embedding_avg, embed_glv_50, 50 )).values
     embeddings = []
+
     for i in range(len(ind_embeddings)):
-        if not (ind_embeddings[i] is None) and not (kw_embeddings[i] is None):
-            embeddings.append(list(0.5*ind_embeddings[i] + 0.5*kw_embeddings[i]))
-        elif not (ind_embeddings[i] is None):
-            embeddings.append(list(ind_embeddings[i]))
-        elif not (kw_embeddings[i] is None):
-            embeddings.append(list(kw_embeddings[i]))
-        else:
-            embeddings.append(list(np.zeros(50)))
+        embeddings.append(ind_embeddings[i] + kw_embeddings[i])
+    embeddings = []
     return embeddings
 
 if __name__ == "__main__":

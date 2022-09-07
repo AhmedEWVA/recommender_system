@@ -121,11 +121,10 @@ def get_rank_wrt_size(candidate_neigh, sizes, size):
     return n1+n2+n3"""
 
 def to_ids(series, df):
-    series_ = series.copy()
-    for i,arr in enumerate(series):
+    # this functions maps the index to the id
+    series_ = series.copy(deep=True)
+    for i in tqdm(range(len(series))):
         for j, ele in enumerate(series[i][0]):
-            """print(ele)
-            print(df.iloc[ele,list(df.columns).index("id")])"""
             series_[i][0][j] = df.iloc[ele,list(df.columns).index("id")]
     return series_
 
